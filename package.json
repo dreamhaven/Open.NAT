@@ -1,7 +1,8 @@
 {
   "name": "com.secretdoor.package.opennat",
   "version": "1.0.0",
-  "displayName": "Secret Door Unity fork of Open.NAT",
+  "displayName": "Secret Door Open.NAT",
   "description": "Library that allows for setting up port forwarding rules.",
-  "unity": "2020.2"
+  "unity": "2020.2",
+  "type": "library"
 }

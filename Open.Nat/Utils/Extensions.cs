@@ -150,7 +150,7 @@ namespace Open.Nat
 		{
 #if DEBUG
 			return await task;
-#endif
+#else
 			var timeoutCancellationTokenSource = new CancellationTokenSource();
 
 			Task completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
@@ -161,6 +161,7 @@ namespace Open.Nat
 			}
 			throw new TimeoutException(
 				"The operation has timed out. The network is broken, router has gone or is too busy.");
+#endif
 		}
 #endif //NET35
 	}

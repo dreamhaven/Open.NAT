@@ -29,7 +29,12 @@ using System.Net;
 
 namespace Open.Nat
 {
-	internal class UpnpNatDeviceInfo
+#if UNITY_INCLUDE_TESTS
+	public
+#else
+	internal 
+#endif
+	class UpnpNatDeviceInfo
 	{
 		public UpnpNatDeviceInfo(IPAddress localAddress, Uri locationUri, string serviceControlUrl, string serviceType)
 		{
