@@ -101,10 +101,18 @@ namespace Open.Nat
 
 				var localHost = ((IPEndPoint)client.Client.LocalEndPoint).Address;
 				var receivedFrom = new IPEndPoint(IPAddress.None, 0);
-				var buffer = client.Receive(ref receivedFrom);
-				var device = AnalyseReceivedResponse(localHost, buffer, receivedFrom);
+                try
+                {
+                    var buffer = client.Receive(ref receivedFrom);
+                    var device = AnalyseReceivedResponse(localHost, buffer, receivedFrom);
 
-				if (device != null) RaiseDeviceFound(device);
+                    if (device != null) RaiseDeviceFound(device);
+                }
+                catch(Exception e)
+                {
+                    NatDiscoverer.TraceSource.LogError("Error receiving {0} - Details:", GetType().Name);
+                    NatDiscoverer.TraceSource.LogError(e.ToString());
+                }
 			}
 		}
 
