@@ -88,6 +88,12 @@ namespace Open.Nat
 				{
 					Discover(socket, cancelationToken);
 				}
+				// Dreamhaven change - we downgrade socket exceptions to warnings since they're expected when searching
+				catch (SocketException e)
+				{
+					NatDiscoverer.TraceSource.LogWarn("Warning searching {0} - Details:", GetType().Name);
+					NatDiscoverer.TraceSource.LogWarn(e.ToString());
+				}
 				catch (Exception e)
 				{
 					NatDiscoverer.TraceSource.LogError("Error searching {0} - Details:", GetType().Name);
