@@ -66,15 +66,15 @@ namespace Open.Nat
 			cancelationToken.ThrowIfCancellationRequested();
 
 			await Task.Factory.StartNew(_ =>
-			{
-				NatDiscoverer.TraceSource.LogInfo("Searching for: {0}", GetType().Name);
-				while (!cancelationToken.IsCancellationRequested)
 				{
-					Discover(cancelationToken);
-					Receive(cancelationToken);
-				}
-				CloseUdpClients();
-			}, null, cancelationToken);
+					NatDiscoverer.TraceSource.LogInfo("Searching for: {0}", GetType().Name);
+					while (!cancelationToken.IsCancellationRequested)
+					{
+						Discover(cancelationToken);
+						Receive(cancelationToken);
+					}
+					CloseUdpClients();
+				}, null, cancelationToken);
 			return _devices;
 		}
 #endif
