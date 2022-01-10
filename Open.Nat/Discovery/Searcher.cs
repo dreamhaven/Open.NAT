@@ -117,6 +117,7 @@ namespace Open.Nat
 				var receivedFrom = new IPEndPoint(IPAddress.None, 0);
 				var buffer = client.Receive(ref receivedFrom);
 				var device = AnalyseReceivedResponse(localHost, buffer, receivedFrom);
+
 				if (device != null) RaiseDeviceFound(device);
 			}
 		}
