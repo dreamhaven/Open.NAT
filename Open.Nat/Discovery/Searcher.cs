@@ -51,8 +51,15 @@ namespace Open.Nat
 				NatDiscoverer.TraceSource.LogInfo("Searching for: {0}", GetType().Name);
 				while (!cancelationToken.IsCancellationRequested)
 				{
-					Discover(cancelationToken);
-					Receive(cancelationToken);
+					try
+					{
+						Discover(cancelationToken);
+						Receive(cancelationToken);
+					}
+					catch (Exception e)
+					{
+						NatDiscoverer.TraceSource.LogError(e.ToString());
+					}
 				}
 				CloseUdpClients();
 			}, cancelationToken)
@@ -66,8 +73,15 @@ namespace Open.Nat
 					NatDiscoverer.TraceSource.LogInfo("Searching for: {0}", GetType().Name);
 					while (!cancelationToken.IsCancellationRequested)
 					{
-						Discover(cancelationToken);
-						Receive(cancelationToken);
+						try
+						{
+							Discover(cancelationToken);
+							Receive(cancelationToken);
+						}
+						catch (Exception e)
+						{
+							NatDiscoverer.TraceSource.LogError(e.ToString());
+						}
 					}
 					CloseUdpClients();
 				}, null, cancelationToken);
@@ -101,18 +115,9 @@ namespace Open.Nat
 
 				var localHost = ((IPEndPoint)client.Client.LocalEndPoint).Address;
 				var receivedFrom = new IPEndPoint(IPAddress.None, 0);
-                try
-                {
-                    var buffer = client.Receive(ref receivedFrom);
-                    var device = AnalyseReceivedResponse(localHost, buffer, receivedFrom);
-
-                    if (device != null) RaiseDeviceFound(device);
-                }
-                catch(Exception e)
-                {
-                    NatDiscoverer.TraceSource.LogError("Error receiving {0} - Details:", GetType().Name);
-                    NatDiscoverer.TraceSource.LogError(e.ToString());
-                }
+				var buffer = client.Receive(ref receivedFrom);
+				var device = AnalyseReceivedResponse(localHost, buffer, receivedFrom);
+				if (device != null) RaiseDeviceFound(device);
 			}
 		}
 
