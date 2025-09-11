@@ -61,19 +61,17 @@ namespace Open.Nat
 #else
 		public async Task<IEnumerable<NatDevice>> Search(CancellationToken cancelationToken)
 		{
-            if (!cancelationToken.IsCancellationRequested)
-            {
-                await Task.Factory.StartNew(_ =>
-                    {
-                        NatDiscoverer.TraceSource.LogInfo("Searching for: {0}", GetType().Name);
-                        while (!cancelationToken.IsCancellationRequested)
-                        {
-                            Discover(cancelationToken);
-                            Receive(cancelationToken);
-                        }
-                        CloseUdpClients();
-                    }, null, cancelationToken);
-            }
+			if (cancelationToken.IsCancellationRequested)
+			{
+				return _devices;
+			}
+
+			NatDiscoverer.TraceSource.LogInfo("Searching for: {0}", GetType().Name);
+
+			Discover(cancelationToken);
+			await Receive(cancelationToken);
+
+			CloseUdpClients();
 			return _devices;
 		}
 #endif
@@ -102,26 +100,57 @@ namespace Open.Nat
 			}
 		}
 
-		private void Receive(CancellationToken cancelationToken)
+		private async Task Receive(CancellationToken cancelationToken)
 		{
-			foreach (var client in UdpClients.Where(x=>x.Available>0))
+			List<Task> tasks = new();
+			foreach (var client in UdpClients)
 			{
-				if(cancelationToken.IsCancellationRequested) return;
+				tasks.Add(ReceiveAndProcessAsync(client));
+			}
+			
+			// UdpClient.ReceiveAsync doesn't support cancellation, so we basically need to spin up a watcher task
+			// to monitor our given cancellation token. Once we see it's been cancelled, it means we've timedout and
+			// we need to close our UdpClients. This is what allows ReceiveAsync task to complete (faulted: w/ObjectDisposedException)
+			CancellationTokenSource timeoutWatcher = new();
+			Task.Run(async () =>
+				{
+					while (!cancelationToken.IsCancellationRequested)
+					{
+						await Task.Delay(TimeSpan.FromMilliseconds(250));
+					}
+				})
+				.ContinueWith(_ =>
+					{
+						CloseUdpClients();
+					}, 
+					timeoutWatcher.Token,
+					// if our timeoutWatcher was cancelled, it means all our recieve calls completed
+					TaskContinuationOptions.NotOnCanceled, 
+					TaskScheduler.FromCurrentSynchronizationContext());
+			
+			//ReceiveAndProcessAsync doesn't throw, hence no catch here
+			await Task.WhenAll(tasks);
+			timeoutWatcher.Cancel();
+		}
 
+		private async Task ReceiveAndProcessAsync(UdpClient client)
+		{
+			try
+			{
 				var localHost = ((IPEndPoint)client.Client.LocalEndPoint).Address;
-				var receivedFrom = new IPEndPoint(IPAddress.None, 0);
-                try
-                {
-                    var buffer = client.Receive(ref receivedFrom);
-                    var device = AnalyseReceivedResponse(localHost, buffer, receivedFrom);
+				UdpReceiveResult result = await client.ReceiveAsync();
+				var device = AnalyseReceivedResponse(localHost, result.Buffer, result.RemoteEndPoint);
 
-                    if (device != null) RaiseDeviceFound(device);
-                }
-                catch(Exception e)
-                {
-                    NatDiscoverer.TraceSource.LogError("Error receiving {0} - Details:", GetType().Name);
-                    NatDiscoverer.TraceSource.LogError(e.ToString());
-                }
+				if (device != null) RaiseDeviceFound(device);
+			}
+			catch (ObjectDisposedException)
+			{
+				NatDiscoverer.TraceSource.LogInfo("Socket closed");
+			}
+			catch (Exception e)
+			{
+				NatDiscoverer.TraceSource.LogError("Error receiving {0} - Details:", GetType().Name);
+				NatDiscoverer.TraceSource.LogError(e.ToString());
 			}
 		}
 
